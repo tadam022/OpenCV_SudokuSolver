@@ -38,11 +38,13 @@ def process_image(original_image, dilate_amount, show_processing=False):
     threshold2 = cv2.adaptiveThreshold(img_blur, 255, 1, 1, blockSize=3, C=2)
 
     if show_processing:
-        cv2.imshow('Adaptive Thresh', threshold2)
+        cv2.namedWindow('Adaptive Thresholding', cv2.WINDOW_NORMAL)
+        cv2.imshow('Adaptive Thresholding', threshold2)
 
     dilated = cv2.dilate(threshold2, np.ones((dilate_amount, dilate_amount), np.uint8))
 
     if show_processing:
+        cv2.namedWindow('Dilated image', cv2.WINDOW_NORMAL)
         cv2.imshow('Dilated image', dilated)
 
     # eroded = cv2.erode(dilated,np.ones((3, 3), np.uint8))
@@ -55,6 +57,7 @@ def get_grid_image(processed_image, original_image, show_processing=False):
     if show_processing:
         contours_image = original_image.copy()
         cv2.drawContours(contours_image, contours, -1, 255, 3)
+        cv2.namedWindow('Contours', cv2.WINDOW_NORMAL)
         cv2.imshow('Contours', contours_image)
 
     polygon = max(contours, key=cv2.contourArea)
@@ -79,11 +82,14 @@ def get_grid_image(processed_image, original_image, show_processing=False):
     # print("# Corners: ", len(corners))
     # print(left_points)
     # print(right_points)
-
-    top_left = min(left_points, key=lambda x: x[1])
-    bottom_left = max(left_points, key=lambda x: x[1])
-    top_right = min(right_points, key=lambda x: x[1])
-    bottom_right = max(right_points, key=lambda x: x[1])
+    try:
+        top_left = min(left_points, key=lambda x: x[1])
+        bottom_left = max(left_points, key=lambda x: x[1])
+        top_right = min(right_points, key=lambda x: x[1])
+        bottom_right = max(right_points, key=lambda x: x[1])
+    except:
+        print("Could not find image's grid points. Cannot solve.")
+        return
 
     # print(top_left, top_right, bottom_left, bottom_right)
 
@@ -99,7 +105,7 @@ def get_grid_image(processed_image, original_image, show_processing=False):
             cv2.circle(highlight_grid_image, corner, 7, (0, 255, 0), cv2.FILLED)
             cv2.putText(highlight_grid_image, f"{label}:{corner}", corner - 20, cv2.FONT_HERSHEY_SIMPLEX, 0.5,
                         (0, 0, 255), 2, cv2.LINE_AA)
-
+        cv2.namedWindow('Corners of grid', cv2.WINDOW_NORMAL)
         cv2.imshow('Corners of grid', highlight_grid_image)
 
     # width should be same as height for a sudoku since its square
@@ -137,7 +143,7 @@ def get_largest_connected_component(cell, cropped_width, cropped_height, toleran
     return number_img
 
 
-def get_grid_numbers(grid_image, CNN_model, Otsu=True, lower=110, tolerance=5, show_certainties=False,
+def get_grid_numbers(grid_image, CNN_model, Otsu=True, gaussian= False, lower=110, tolerance=5, show_certainties=False,
                      show_processing=False):
     warped_image_grey = cv2.cvtColor(grid_image, cv2.COLOR_BGR2GRAY)
     '''
@@ -148,10 +154,15 @@ def get_grid_numbers(grid_image, CNN_model, Otsu=True, lower=110, tolerance=5, s
     if not Otsu:
         threshold_val, warped_image_binary = cv2.threshold(warped_image_grey, lower, 255,
                                                            cv2.THRESH_BINARY)  # + cv2.THRESH_OTSU)
+        if gaussian:
+            threshold_val, warped_image_binary = cv2.adaptiveThreshold(warped_image_binary, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+                                                                       cv2.THRESH_BINARY, blockSize=9, C=2)
+
     else:
         threshold_val, warped_image_binary = cv2.threshold(warped_image_grey, lower, 255,
                                                            cv2.THRESH_BINARY + cv2.THRESH_OTSU)
     if show_processing:
+        cv2.namedWindow('warped binary image', cv2.WINDOW_NORMAL)
         cv2.imshow('warped binary image', warped_image_binary)
     # cv2.imshow('warped binary image', warped_image_binary)
     # cv2.imshow('thresh2', threshold2)
@@ -344,9 +355,12 @@ def draw_numbers(sudoku_grid, solved_grid, original_corners, warped_img, final_o
         final_output_image[:, :, channel] = f + f2
 
     if show_processing:
+        cv2.namedWindow('Filled in grid', cv2.WINDOW_NORMAL)
+        cv2.namedWindow('Filled in original grid', cv2.WINDOW_NORMAL)
         cv2.imshow('Filled in grid', warped_img)
         cv2.imshow('Filled in original grid', non_warped_image_filled)
 
+    cv2.namedWindow("Final Image", cv2.WINDOW_NORMAL) # Allow user to re-size window
     cv2.imshow("Final Image", final_output_image)
 
 
@@ -436,7 +450,7 @@ def check_if_valid_grid(sudoku_grid):
 
 
 # Returns True if at least one solution, False if no solution found
-def get_sudoku(original_image, dilate_amount=1, Otsu=True, show_certainties=True, show_processing=False):
+def get_sudoku(original_image, dilate_amount=1, Otsu=True, gaussian=False, show_certainties=True, show_processing=False):
     print("Reading Image...\n")
 
     processed_image = process_image(original_image, dilate_amount=dilate_amount, show_processing=show_processing)
@@ -448,11 +462,16 @@ def get_sudoku(original_image, dilate_amount=1, Otsu=True, show_certainties=True
         print(e)
         return False, None, None, None
 
-    grid_image, corners = get_grid_image(processed_image, original_image, show_processing=show_processing)
+    try:
+        grid_image, corners = get_grid_image(processed_image, original_image, show_processing=show_processing)
+    except TypeError:
+
+        print("Could not get corners")
+        return
 
     if not grid_image is None:
 
-        unsolved_sudoku_grid = get_grid_numbers(grid_image, CNN_model, Otsu=Otsu, tolerance=5,
+        unsolved_sudoku_grid = get_grid_numbers(grid_image, CNN_model, Otsu=Otsu, gaussian=gaussian, tolerance=5,
                                                 show_certainties=show_certainties,
                                                 show_processing=show_processing)
 
@@ -491,11 +510,11 @@ def get_solution(sudoku_grid):
     return
 
 
-def main(image_path, show_processing=False, show_certainties=False):
-    #image_path = 12.jpeg"
+def main(image_path = "test_images/1.PNG", show_processing=False, show_certainties=False):
+
     original_image = read_in_image(image_path)
     while original_image is None:
-        image_path = input("\nEnter image path: ")
+        image_path = input("\nEnter image path:\n ")
         original_image = read_in_image(image_path)
 
     final_output_image = original_image.copy()
@@ -505,7 +524,7 @@ def main(image_path, show_processing=False, show_certainties=False):
 
     # Try different combinations of image processing to get a solved grid
     # Can also try changing PROBABILITY_THRESHOLD constant defined at top of file, e.g. to 0.5
-    for i in range(4):
+    for i in range(5):
         print("Re-reading image with different processing...")
         if i == 0:
             valid, unsolved_sudoku_grid, corners, grid_image = get_sudoku(original_image,
@@ -515,7 +534,11 @@ def main(image_path, show_processing=False, show_certainties=False):
             valid, unsolved_sudoku_grid, corners, grid_image = get_sudoku(original_image, Otsu=False,
                                                                           show_certainties=show_certainties,
                                                                           show_processing=show_processing)
-        elif i == 2:  # Change dilation (helps if the grid's gridlines have gaps, as if they do then they can be seen as a valid contour)
+        elif i == 2: # Try with gaussian thresholding for warped grid
+            valid, unsolved_sudoku_grid, corners, grid_image = get_sudoku(original_image, Otsu=True, gaussian=True, dilate_amount=1,
+                                                                          show_certainties=show_certainties,
+                                                                          show_processing=show_processing)
+        elif i == 3:  # Change dilation (helps if the grid's gridlines have gaps, as if they do then they can be seen as a valid contour)
             valid, unsolved_sudoku_grid, corners, grid_image = get_sudoku(original_image, Otsu=True, dilate_amount=3,
                                                                           show_certainties=show_certainties,
                                                                           show_processing=show_processing)
@@ -543,4 +566,5 @@ def main(image_path, show_processing=False, show_certainties=False):
 
 
 if __name__ == "__main__":
-    main(show_certainties=False, show_processing=False)
+    image_path = "test images/1.png"
+    main(image_path, show_certainties=False, show_processing=False)

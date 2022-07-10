@@ -7,7 +7,6 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 from tensorflow import keras
 from keras import layers
 from keras.optimizers import Adam
-#from keras.utils import to_categorical
 
 file_path = 'CNN_data/samples'
 MODEL_DIRECTORY = 'CNN_model'
@@ -15,8 +14,9 @@ MODEL_DIRECTORY = 'CNN_model'
 IMG_SIZE = 32
 
 def read_in_data():
-    images = []
-    image_labels = []
+    #images = np.array([])
+    #image_labels = np.array([],dtype=int)
+    images, image_labels = [], [] # Faster to append to python list first and then convert to numpy array
     for i in range(1, 11):
         prefix = str(i)
         while len(prefix) != 3:
@@ -29,13 +29,10 @@ def read_in_data():
                 new_img = cv2.cvtColor(new_img, cv2.COLOR_BGR2GRAY)
 
                 new_img = new_img / 255
+                #images = np.append(images, new_img)
+                #image_labels = np.append(image_labels, i-1)
                 images.append(new_img)
                 image_labels.append(i - 1)
-
-    print("#images")
-    print(len(images))
-    print(len(image_labels))
-
 
     #plt.imshow(images[0])
     #plt.show()
@@ -54,7 +51,6 @@ def read_in_data():
     print("Test Set Shape = ", X_test.shape) # (1016, 32, 32)
     print("Validation Set Shape = ", X_validation.shape)  # (1829, 32, 32)
 
-
     X_train = np.expand_dims(X_train, axis=3)
     X_test = np.expand_dims(X_test, 3)
     X_validation = np.expand_dims(X_validation, 3)
@@ -68,7 +64,6 @@ def create_model():
             layers.RandomRotation(0.1, input_shape=(IMG_SIZE, IMG_SIZE, 1)),
             layers.RandomZoom(0.2),
             layers.RandomTranslation(0.2, 0.2)
-
         ]
     )
 
@@ -76,7 +71,6 @@ def create_model():
         [  # keras.Input((32, 32, 1)), need this line if you dont use input_shape = as first layer in data_augmentation
 
             data_augmentation,
-            # Use padding = 'same' instead of 'valid' as input image size may not get fully covered by the kernel and stride size specified
             layers.Conv2D(32, (3, 3), 1, activation='relu'),
             layers.Conv2D(32, (3, 3), 1, activation='relu'),
             layers.MaxPooling2D((2, 2)),
