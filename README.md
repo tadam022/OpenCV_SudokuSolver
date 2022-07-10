@@ -7,6 +7,7 @@ It also assumes that the puzzle is valid and should only have one possible solut
 Works well if the images are clear, well focused with no heavy shadows. As such this application can easily work on screenshots of digital Sudoku puzzles
 from websites for example.
 
-The dataset used for training the CNN was the Chars74k dataset obtained from: http://www.ee.surrey.ac.uk/CVSSP/demos/chars74k/
+The dataset used for training the CNN was the Chars74k computer font characters dataset, obtained from: http://www.ee.surrey.ac.uk/CVSSP/demos/chars74k/
+The CNN was only trained for the 10 classes corresponding to the numberse 0 to 9 inclusive, namely Samples001 to Samples010 from EnglishFnt.Tgz obtained from the link above.
 
 Some of the test images were obtained from: https://icosys.ch/sudoku-dataset
