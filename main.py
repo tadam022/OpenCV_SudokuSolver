@@ -491,8 +491,8 @@ def get_solution(sudoku_grid):
     return
 
 
-def main(image_path="test_puzzle_images/1.png", show_processing=False, show_certainties=False):
-    image_path = "test_puzzle_images/12.jpeg"
+def main(image_path, show_processing=False, show_certainties=False):
+    #image_path = 12.jpeg"
     original_image = read_in_image(image_path)
     while original_image is None:
         image_path = input("\nEnter image path: ")
