@@ -8,3 +8,5 @@ Works well if the images are clear, well focused with no heavy shadows. As such 
 from websites for example.
 
 The dataset used for training the CNN was the Chars74k dataset obtained from: http://www.ee.surrey.ac.uk/CVSSP/demos/chars74k/
+
+Some of the test images were obtained from: https://icosys.ch/sudoku-dataset
